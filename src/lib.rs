@@ -172,9 +172,6 @@ fn test_run_n() {
 
 #[test]
 fn test_doc1() {
-    use std::sync::Arc;
-    use std::sync::atomics::{AtomicUint, SeqCst};
-
     let c = Arc::new(AtomicUint::new(0));
     let d = c.clone();
     run((2u, 2u), |&: (x,y): (uint, uint)| { d.fetch_add(2*x + y, SeqCst); });
