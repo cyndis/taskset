@@ -24,8 +24,11 @@ pub struct TaskSet<T> {
     size: T
 }
 
-/// A private trait implemented for types that can act as a task grid size or coordinate.
-trait Dim: Copy+Send+Sync+'static {
+/// Trait for types that can act as task grid coordinates or size.
+pub trait Dim: Copy+Send+Sync+'static {
+    /// Called to generate a task grid coordinate from a number. `size` is the grid size passed to
+    /// `run` or `TaskSet::new` and `id` is an increasing integer. Return `None` if there are no
+    /// more tasks to run.
     fn from_task_id(id: uint, size: Self) -> Option<Self>;
 }
 
