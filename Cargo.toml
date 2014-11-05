@@ -3,6 +3,3 @@
 name = "taskset"
 version = "0.0.1"
 authors = ["Mikko Perttunen <cyndis@kapsi.fi>"]
-
-[profile.test]
-debug = false

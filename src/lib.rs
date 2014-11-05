@@ -12,8 +12,8 @@
 //! for information on how to disable debug info.
 
 use std::sync::Arc;
-use std::sync::atomics::AtomicUint;
-use std::sync::atomics::SeqCst;
+use std::sync::atomic::AtomicUint;
+use std::sync::atomic::SeqCst;
 
 /// A type describing an N-dimensional grid of tasks.
 ///
@@ -91,33 +91,35 @@ impl<T: Dim> TaskSet<T> {
 ///
 /// ```ignore
 /// use std::sync::Arc;
-/// use std::sync::atomics::{AtomicUint, SeqCst};
+/// use std::sync::atomic::{AtomicUint, SeqCst};
 ///
 /// let c = Arc::new(AtomicUint::new(0));
-/// let d = c.clone();
-/// run((2u, 2u), |&: (x,y): (uint, uint)| { d.fetch_add(2*x + y, SeqCst); });
+/// run((2u, 2u), c.clone(), |&: (x,y): (uint, uint), c: Arc<AtomicUint>| {
+///   d.fetch_add(2*x + y, SeqCst);
+/// });
 /// assert_eq!(c.load(SeqCst), 6);
 /// ```
-pub fn run<T: Dim, F: Fn<(T,),()>+Send+Sync>(size: T, f: F) {
-    run_on_n(size, std::os::num_cpus(), f)
+pub fn run<T: Dim, F: Fn<(T,D),()>+Send+Sync, D: Clone+Send>(size: T, data: D, f: F) {
+    run_on_n(size, std::os::num_cpus(), data, f)
 }
 
 /// Runs tasks in grid specified by `size` on specified number of threads.
 ///
 /// Tasks are run in parallel on `threads` threads.
 /// Execution is blocked until all tasks have completed.
-pub fn run_on_n<T: Dim, F: Fn<(T,),()>+Send+Sync>(size: T, threads: uint, f: F) {
+pub fn run_on_n<T: Dim, F: Fn<(T,D),()>+Send+Sync, D: Clone+Send>(size: T, threads: uint, data: D, f: F) {
     let ts = Arc::new(TaskSet::new(size));
     let f = Arc::new(f);
     let (completion_tx, completion_rx) = std::comm::channel();
     for _ in range(0, threads) {
         let ts = ts.clone();
         let f = f.clone();
+        let d = data.clone();
         let completion_tx = completion_tx.clone();
         std::task::spawn(proc() {
             loop {
                 match ts.get() {
-                    Some(id) => (*f)(id),
+                    Some(id) => (*f)(id,d.clone()),
                     None     => break
                 }
             }
@@ -165,9 +167,8 @@ fn test_3d() {
 fn test_run_n() {
     let c = Arc::new(AtomicUint::new(0));
 
-    let d = c.clone();
-    run_on_n(3u, 2, |&: id| {
-        d.fetch_add(id, SeqCst);
+    run_on_n(3u, 2, c.clone(), |&: id, c: Arc<AtomicUint>| {
+        c.fetch_add(id, SeqCst);
     });
 
     assert_eq!(c.load(SeqCst), 3);
@@ -176,7 +177,8 @@ fn test_run_n() {
 #[test]
 fn test_doc1() {
     let c = Arc::new(AtomicUint::new(0));
-    let d = c.clone();
-    run((2u, 2u), |&: (x,y): (uint, uint)| { d.fetch_add(2*x + y, SeqCst); });
+    run((2u, 2u), c.clone(), |&: (x,y): (uint, uint), c: Arc<AtomicUint>| {
+        c.fetch_add(2*x + y, SeqCst);
+    });
     assert_eq!(c.load(SeqCst), 6);
 }
