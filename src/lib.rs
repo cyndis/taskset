@@ -1,4 +1,4 @@
-#![feature(overloaded_calls, unboxed_closures)]
+#![feature(unboxed_closures)]
 
 //! Library for easily generating task indices and running tasks for N-dimensional workloads
 //! (N in {1,2,3}).
